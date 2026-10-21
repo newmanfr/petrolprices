@@ -1,5 +1,5 @@
 /*
- * Forecourt Finder: UK petrol and diesel price comparison.
+ * Petrol Finder: UK petrol and diesel price comparison.
  * Static site: no backend, no build step, no API keys.
  *
  * Structure:
@@ -521,7 +521,7 @@
   function idb() {
     return new Promise(function (resolve, reject) {
       if (!window.indexedDB) return reject(new Error('no indexedDB'));
-      var r = indexedDB.open('forecourt-finder', 1);
+      var r = indexedDB.open('Petrol-finder', 1);
       r.onupgradeneeded = function () { r.result.createObjectStore('kv'); };
       r.onsuccess = function () { resolve(r.result); };
       r.onerror = function () { reject(r.error); };
