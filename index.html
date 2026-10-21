@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#0b1220">
+<meta name="description" content="Compare UK petrol and diesel prices near any postcode, town or city. Uses the government Fuel Finder open data, updated twice daily.">
+<title>Forecourt Finder: compare UK petrol and diesel prices</title>
+<script>
+  (function () {
+    var t;
+    try { t = localStorage.getItem('ff:theme'); } catch (e) {}
+    if (t !== 'light' && t !== 'dark') {
+      t = (window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+    }
+    document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<a class="skip" href="#results-heading">Skip to results</a>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true" focusable="false">
+        <rect x="6" y="4" width="15" height="24" rx="2.5" fill="none" stroke="currentColor" stroke-width="2.4"/>
+        <rect x="9.5" y="8" width="8" height="6" rx="1" fill="currentColor"/>
+        <path d="M21 12h3.2a2 2 0 0 1 2 2v9a1.8 1.8 0 0 0 3.6 0v-9l-3-3.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M4 28h19" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+      </svg>
+      <span class="brand-name">Forecourt Finder</span>
+    </div>
+    <button type="button" id="theme-toggle" class="btn btn-quiet" aria-label="Switch to light theme">
+      <span id="theme-label">Light theme</span>
+    </button>
+  </div>
+</header>
+
+<main id="main">
+  <section class="card search" aria-labelledby="search-heading">
+    <h1 id="search-heading">Find the cheapest petrol and diesel near you</h1>
+    <form id="search-form" novalidate>
+      <label for="q" class="field-label">Postcode, town or city</label>
+      <div class="search-row">
+        <input id="q" name="q" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" placeholder="e.g. M1 1AE, Leeds, Cardiff" maxlength="80" aria-describedby="search-msg">
+        <button type="submit" id="search-btn" class="btn btn-primary">Search</button>
+      </div>
+      <div class="search-actions">
+        <button type="button" id="locate-btn" class="btn btn-quiet">Use my location</button>
+        <span class="hint">Your location is only requested when you press this button, and is never sent to our servers.</span>
+      </div>
+      <p id="search-msg" class="form-msg" role="alert" hidden></p>
+      <div id="alt-places" class="alt-places" hidden></div>
+    </form>
+  </section>
+
+  <div class="layout">
+    <aside class="card filters" aria-labelledby="filters-heading">
+      <div class="filters-head">
+        <h2 id="filters-heading">Filters</h2>
+        <button type="button" id="reset-btn" class="btn btn-quiet btn-small">Reset filters</button>
+      </div>
+
+      <fieldset class="fuel-set">
+        <legend class="field-label">Fuel type</legend>
+        <div id="fuel-options" class="fuel-options"><span class="hint">Loading fuel types…</span></div>
+      </fieldset>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="radius" class="field-label">Search radius</label>
+          <select id="radius">
+            <option value="1">1 mile</option>
+            <option value="2">2 miles</option>
+            <option value="3">3 miles</option>
+            <option value="5" selected>5 miles</option>
+            <option value="10">10 miles</option>
+            <option value="15">15 miles</option>
+            <option value="25">25 miles</option>
+            <option value="50">50 miles</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="sort" class="field-label">Sort by</label>
+          <select id="sort">
+            <option value="cheapest" selected>Cheapest price</option>
+            <option value="nearest">Nearest station</option>
+            <option value="name">Station name</option>
+          </select>
+        </div>
+      </div>
+
+      <details id="more-filters" class="more">
+        <summary>More filters</summary>
+        <div class="field">
+          <label for="brand" class="field-label">Brand</label>
+          <select id="brand"><option value="">All brands</option></select>
+        </div>
+        <div class="field">
+          <label for="name-filter" class="field-label">Station name or brand</label>
+          <input id="name-filter" type="search" autocomplete="off" spellcheck="false" placeholder="e.g. Tesco, Esso Express" maxlength="60">
+        </div>
+        <label class="check">
+          <input type="checkbox" id="hide-old">
+          <span>Hide prices reported more than 14 days ago</span>
+        </label>
+      </details>
+    </aside>
+
+    <section class="results-col" aria-labelledby="results-heading">
+      <h2 id="results-heading" class="sr-only">Results</h2>
+
+      <div id="data-status" class="data-status" aria-live="polite"></div>
+      <div id="banner" class="banner" role="status" hidden></div>
+
+      <div id="loading" class="loading" role="status" hidden>
+        <span class="spinner" aria-hidden="true"></span>
+        <span id="loading-text">Loading prices…</span>
+      </div>
+
+      <div id="summary" class="summary" aria-live="polite" hidden></div>
+
+      <div id="view-bar" class="view-bar" hidden>
+        <div class="seg" role="group" aria-label="Results view">
+          <button type="button" id="view-list" class="seg-btn" aria-pressed="true">List</button>
+          <button type="button" id="view-map" class="seg-btn" aria-pressed="false">Map</button>
+        </div>
+      </div>
+
+      <div id="empty" class="empty" hidden></div>
+      <ol id="results" class="results" hidden></ol>
+      <div class="more-wrap"><button type="button" id="more-btn" class="btn btn-quiet" hidden>Show more</button></div>
+
+      <div id="map-wrap" class="map-wrap" hidden>
+        <div id="map" role="region" aria-label="Map of petrol stations"></div>
+        <p class="hint">Map shows up to 150 stations. Pins show the price in pence per litre.</p>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer class="foot">
+  <p><strong>About these prices.</strong> They come from a file published twice a day, not a live feed. Each station reports its own prices, so check the pump price before you fill up.</p>
+  <p>Fuel prices: contains public sector information licensed under the <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" target="_blank" rel="noopener noreferrer">Open Government Licence v3.0</a>. Source: CMA Fuel Finder statutory scheme, republished by <a href="https://cheapfuelnearme.uk/api/" target="_blank" rel="noopener noreferrer">Cheap Fuel Near Me</a>. Not affiliated with the CMA or any government body.</p>
+  <p>Postcode lookups: <a href="https://postcodes.io" target="_blank" rel="noopener noreferrer">postcodes.io</a>. Contains OS data © Crown copyright and database right, Royal Mail data © Royal Mail copyright and database right, and ONS data licensed under the Open Government Licence v3.0. Place name fallback: <a href="https://nominatim.org" target="_blank" rel="noopener noreferrer">Nominatim</a>. Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors. Map library: <a href="https://leafletjs.com" target="_blank" rel="noopener noreferrer">Leaflet</a>.</p>
+</footer>
+
+<script src="./app.js"></script>
+</body>
+</html>
